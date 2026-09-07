@@ -32,7 +32,7 @@ public static class SeedData
         };
         db.Users.Add(demoUser);
 
-        // Products — seeded from the frontend's products.json data
+      
         SeedProduct(db, categories, "Wireless Bluetooth Headphones", "wireless-bluetooth-headphones",
             "Premium wireless headphones with active noise cancellation, 30-hour battery life, and crystal-clear audio. Perfect for music lovers and remote workers alike. Features touch controls, built-in microphone, and foldable design for easy portability.",
             450, "electronics", 50, 4.8m, 234, true,

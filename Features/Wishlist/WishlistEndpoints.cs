@@ -1,7 +1,4 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
-using ReactCommerce.Api.Data;
-using ReactCommerce.Api.Features.Products;
 using ReactCommerce.Api.Shared;
 
 namespace ReactCommerce.Api.Features.Wishlist;
@@ -19,47 +16,29 @@ public static class WishlistEndpoints
         group.MapDelete("/{productId:guid}", RemoveFromWishlist);
     }
 
-    private static async Task<IResult> GetWishlist(ClaimsPrincipal claims, AppDbContext db)
+    private static async Task<IResult> GetWishlist(ClaimsPrincipal claims, IWishlistService wishlistService)
     {
         var userId = claims.RequireUserId();
-        var productIds = await db.WishlistItems
-            .Where(w => w.UserId == userId)
-            .Select(w => w.ProductId)
-            .ToListAsync();
-
+        var productIds = await wishlistService.GetWishlistAsync(userId);
         return Results.Ok(ApiResponse<List<Guid>>.Ok(productIds));
     }
 
-    private static async Task<IResult> AddToWishlist(Guid productId, ClaimsPrincipal claims, AppDbContext db)
+    private static async Task<IResult> AddToWishlist(Guid productId, ClaimsPrincipal claims, IWishlistService wishlistService)
     {
         var userId = claims.RequireUserId();
-
-        var exists = await db.WishlistItems
-            .AnyAsync(w => w.UserId == userId && w.ProductId == productId);
-
-        if (exists) return Results.Ok(ApiResponse<object>.Ok(new { }, "Already in wishlist"));
-
-        db.WishlistItems.Add(new Entities.WishlistItem
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            ProductId = productId,
-        });
-        await db.SaveChangesAsync();
+        var added = await wishlistService.AddToWishlistAsync(userId, productId);
+        
+        if (!added) return Results.Ok(ApiResponse<object>.Ok(new { }, "Already in wishlist"));
 
         return Results.Created($"/api/wishlist", ApiResponse<object>.Ok(new { }, "Added to wishlist"));
     }
 
-    private static async Task<IResult> RemoveFromWishlist(Guid productId, ClaimsPrincipal claims, AppDbContext db)
+    private static async Task<IResult> RemoveFromWishlist(Guid productId, ClaimsPrincipal claims, IWishlistService wishlistService)
     {
         var userId = claims.RequireUserId();
-        var item = await db.WishlistItems
-            .FirstOrDefaultAsync(w => w.UserId == userId && w.ProductId == productId);
+        var removed = await wishlistService.RemoveFromWishlistAsync(userId, productId);
 
-        if (item is null) return Results.NotFound();
-
-        db.WishlistItems.Remove(item);
-        await db.SaveChangesAsync();
+        if (!removed) return Results.NotFound();
 
         return Results.NoContent();
     }
